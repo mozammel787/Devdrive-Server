@@ -1,5 +1,5 @@
 {
-  "name": "news-backend",
+  "name": "devdrive",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,6 @@
   },
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -17,8 +16,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.7.0",
     "nodemon": "^3.1.3"
-  }
+  },
+  "devDependencies": {},
+  "description": ""
 }
-
-
-
