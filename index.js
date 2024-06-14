@@ -5,6 +5,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")("sk_test_4eC39HqLyjWDarjtT1zdp7dc");
 require("dotenv").config();
 
 app.use(cors());
@@ -48,6 +49,7 @@ async function run() {
     const database = client.db("devdeive_course");
     const course = database.collection("course");
     const user = database.collection("user");
+    const payment = database.collection("payment");
 
     //   course
 
@@ -72,7 +74,7 @@ async function run() {
       const id = req.params.id;
       const result = await course.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
-    });  
+    });
 
     app.patch("/course/edit/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
@@ -84,11 +86,11 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/course/:email", async (req, res) => {
+    app.get("/course/find/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email);
+      // console.log(email);
       const result = await course.find({ authorEmail: email }).toArray();
-      res.send(result); 
+      res.send(result);
     });
 
     // user
@@ -102,15 +104,15 @@ async function run() {
     app.post("/user", async (req, res) => {
       const data = req.body;
       const token = createToken(data);
-    // console.log(token);
+      // console.log(token);
       const itUserExist = await user.findOne({ email: data?.email });
       if (itUserExist?._id) {
         return res.send({
-          token
+          token,
         });
       }
       await user.insertOne(data);
-      res.send({token});
+      res.send({ token });
     });
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
@@ -126,6 +128,48 @@ async function run() {
         { $set: updateData },
         { upsert: true }
       );
+      res.send(result);
+    });
+
+    // payment
+    app.post("/create-payment-intent", async (req, res) => {
+      const product = req.body;
+      const price = product.price;
+      const amount = price * 100;
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+    app.post("/payment", async (req, res) => {
+      const data = req.body;
+      const result = await payment.insertOne(data);
+
+      const id = data.courseId;
+      const peachesCourse = await course.findOne({ _id: new ObjectId(id) });
+      const enrolledTotal = (peachesCourse?.enrolled || 0) + 1;
+
+      await course.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { enrolled: enrolledTotal } }
+      );
+
+      const email = data.customerEmail;
+      const customer = await user.findOne({ email });
+      const enrolledCourses = Array.isArray(customer.enrolledCourses)
+        ? customer.enrolledCourses
+        : [];
+      enrolledCourses.push(peachesCourse);
+
+      await user.updateOne(
+        { email: email },
+        { $set: { enrolledCourses: enrolledCourses } }
+      );
+
       res.send(result);
     });
 
