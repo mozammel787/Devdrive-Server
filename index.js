@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
@@ -33,7 +34,6 @@ function verifyToken(req, res, next) {
   next();
 }
 
-
 const client = new MongoClient(process.env.URI, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -45,55 +45,50 @@ const client = new MongoClient(process.env.URI, {
 async function run() {
   try {
     await client.connect();
-    const database = client.db("dot_slash_news");
-    const news = database.collection("news");
+    const database = client.db("devdeive_course");
+    const course = database.collection("course");
     const user = database.collection("user");
 
-    //   News
+    //   course
 
-    app.get("/news", async (req, res) => {
-      const data = news.find();
-      const result = await data.sort({ "publishedAt": -1 }).toArray();
+    app.get("/course", async (req, res) => {
+      const data = course.find();
+      const result = await data.toArray();
       res.send(result);
     });
 
-    app.get("/news/:id", async (req, res) => {
+    app.get("/course/:id", async (req, res) => {
       const id = req.params.id;
-      const result = await news.findOne({ _id: new ObjectId(id) });
+      const result = await course.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
 
-    app.post("/news/add-post",verifyToken, async (req, res) => {
+    app.post("/course/add", verifyToken, async (req, res) => {
       const data = req.body;
-      const result = await news.insertOne(data);
+      const result = await course.insertOne(data);
       res.send(result);
     });
-    app.delete("/news/delete-post/:id",verifyToken, async (req, res) => {
+    app.delete("/course/delete/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
-      const result = await news.deleteOne({ _id: new ObjectId(id) });
+      const result = await course.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
-    });
+    });  
 
-    app.patch("/news/edit-post/:id", verifyToken, async (req, res) => {
+    app.patch("/course/edit/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const updateData = req.body;
-      const result = await news.updateOne(
+      const result = await course.updateOne(
         { _id: new ObjectId(id) },
         { $set: updateData }
       );
       res.send(result);
     });
 
-    app.get("/news/my-post/:email", async (req, res) => {
+    app.get("/course/:email", async (req, res) => {
       const email = req.params.email;
-      const result = await news.find({ authorEmail: email }).toArray();
-      res.send(result);
-    });
-
-    app.get("/news/catagory/:catagory", async (req, res) => {
-      const catagory = req.params.catagory;
-      const result = await news.find({ catagory: catagory }).toArray();
-      res.send(result);
+      console.log(email);
+      const result = await course.find({ authorEmail: email }).toArray();
+      res.send(result); 
     });
 
     // user
@@ -107,15 +102,15 @@ async function run() {
     app.post("/user", async (req, res) => {
       const data = req.body;
       const token = createToken(data);
-
-      const itUserExist = await user.findOne({ email: user?.email });
+    // console.log(token);
+      const itUserExist = await user.findOne({ email: data?.email });
       if (itUserExist?._id) {
         return res.send({
-          token,
+          token
         });
       }
       await user.insertOne(data);
-      res.send(token);
+      res.send({token});
     });
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
@@ -123,7 +118,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/user/:email", verifyToken,async (req, res) => {
+    app.patch("/user/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const updateData = req.body;
       const result = await user.updateOne(
@@ -143,7 +138,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("it's work");
+  res.sendFile(path.join(__dirname, "public", "home.html"));
 });
 app.listen(port, (req, res) => {
   console.log(port);
