@@ -132,6 +132,11 @@ async function run() {
     });
 
     // payment
+    app.get("/payment", async (req, res) => {
+      const data = payment.find();
+      const result = await data.toArray();
+      res.send(result);
+    });
     app.post("/create-payment-intent", async (req, res) => {
       const product = req.body;
       const price = product.price;
